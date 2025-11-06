@@ -1,0 +1,121 @@
+basePath: /
+definitions:
+  controller.ApiError:
+    properties:
+      code:
+        type: integer
+      description: {}
+    type: object
+  dto.DocumentDto:
+    properties:
+      created_at:
+        type: string
+      document: {}
+      id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.RequestedDocumentsPage:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.DocumentDto'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API для работы с архивами
+  title: Archive API
+  version: "1.0"
+paths:
+  /archive/documents:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список документов с поддержкой пагинации
+      parameters:
+      - default: 1
+        description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Размер страницы
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.RequestedDocumentsPage'
+        "400":
+          description: Ошибка валидации
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+      summary: Получить список документов
+      tags:
+      - archive
+  /archive/documents/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает документ по указанному ID с учетом параметров запроса
+      parameters:
+      - description: ID документа
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Хост запроса
+        in: header
+        name: Host
+        required: true
+        type: string
+      - description: Отправитель запроса
+        in: query
+        name: sender
+        required: true
+        type: string
+      - description: Регион
+        in: query
+        name: region
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с документом
+          schema:
+            $ref: '#/definitions/dto.DocumentDto'
+        "400":
+          description: Ошибка валидации
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+        "404":
+          description: Документ не найден
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+      summary: Получить документ по ID
+      tags:
+      - archive
+swagger: "2.0"

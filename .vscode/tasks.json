@@ -1,0 +1,62 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "goimports: format all",
+            "type": "shell",
+            "command": "go",
+            "args": ["run", "golang.org/x/tools/cmd/goimports@latest", "-w", "."],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "golangci-lint: check all",
+            "type": "shell",
+            "command": "go",
+            "args": ["run", "github.com/golangci/golangci-lint/cmd/golangci-lint@latest", "run"],
+            "problemMatcher": {
+                "owner": "golangci-lint",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.+?):(\\d+):(\\d+): (.+?) \\((.+?)\\)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4,
+                    "code": 5
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "swag: init",
+            "type": "shell",
+            "command": "go",
+            "args": ["run", "github.com/swaggo/swag/cmd/swag@latest", "init", "-g", "cmd/hello-go/main.go"],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        }
+    ]
+}
+
