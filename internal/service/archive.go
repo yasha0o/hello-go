@@ -60,6 +60,16 @@ func (s *ArchiveService) LoadDocument(
 	req *dto.LoadDocumentRequest,
 ) (*dto.CreatedRequest, error) {
 	request := s.mapper.MapRequest(req)
+
+	ctx, err := s.repository.CreateTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = s.repository.RollbackTx(ctx)
+	}()
+
 	id, err := s.repository.InsertRequest(ctx, request)
 	if err != nil {
 		return nil, err
@@ -70,6 +80,10 @@ func (s *ArchiveService) LoadDocument(
 
 	response := &dto.CreatedRequest{
 		ID: id,
+	}
+
+	if err := s.repository.CommitTx(ctx); err != nil {
+		return nil, err
 	}
 
 	return response, err

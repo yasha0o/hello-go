@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"log"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,6 +32,8 @@ func ErrorWrapper(handler HandlerFunc) gin.HandlerFunc {
 }
 
 func handleError(c *gin.Context, err error) {
+	log.Printf("Request error: %v\nStack trace:\n%s", err, debug.Stack())
+
 	var error ApiError
 
 	switch e := err.(type) {
