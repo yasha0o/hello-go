@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  archive_db:
+    image: postgres:16-alpine
+    container_name: archive_db
+    environment:
+      POSTGRES_DB: archive_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d archive_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate:v4.17.0
+    container_name: archive_migrate
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://postgres:postgres@archive_db:5432/archive_db?sslmode=disable"
+      - "up"
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      archive_db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+

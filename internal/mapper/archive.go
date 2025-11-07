@@ -16,10 +16,10 @@ func (m *ArchiveMapper) MapSlice(doc []*domain.Document) []*dto.DocumentDto {
 		return nil
 	}
 
-	result := make([]*dto.DocumentDto, 0, len(doc))
+	result := make([]*dto.DocumentDto, len(doc))
 
-	for _, d := range doc {
-		result = append(result, m.MapDocument(d))
+	for i, d := range doc {
+		result[i] = m.MapDocument(d)
 	}
 	return result
 }

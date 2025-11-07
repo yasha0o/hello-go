@@ -45,7 +45,7 @@ func (c *ArchiveController) GetDocuments(ctx *gin.Context) error {
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		return &ValidationError{Err: err}
 	}
-	archives, err := c.service.GetDocuments(ctx.Request.Context(), &req)
+	archives, err := c.service.GetDocumentsPage(ctx.Request.Context(), &req)
 	if err != nil {
 		return err
 	}
@@ -66,12 +66,12 @@ func (c *ArchiveController) GetDocuments(ctx *gin.Context) error {
 // @Failure 500 {object} ApiError "Внутренняя ошибка сервера"
 // @Router /archive/documents/{id} [get]
 func (c *ArchiveController) GetDocument(ctx *gin.Context) error {
-	var id uuid.UUID
-	if err := ctx.ShouldBindUri(&id); err != nil {
+	id, err := uuid.Parse(ctx.Param("id"))
+	if err != nil {
 		return &ValidationError{Err: err}
 	}
 
-	archives, err := c.service.GetDocument(ctx.Request.Context(), &id)
+	archives, err := c.service.GetDocument(ctx.Request.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -93,13 +93,17 @@ func (c *ArchiveController) GetDocument(ctx *gin.Context) error {
 // NIZHNY_NOVGOROD,CHELYABINSK,SAMARA,OMSK,ROSTOV_ON_DON)
 // @Success 200 {object} dto.CreatedRequest "Успешный ответ c идентификатором созданного запроса"
 // @Failure 400 {object} ApiError "Ошибка валидации"
-// @Failure 500 {object} ApiError "Внутренняя ошибка сервера" 
+// @Failure 500 {object} ApiError "Внутренняя ошибка сервера"
 // @Router /archive/documents/{id} [post]
 func (c *ArchiveController) LoadDocument(ctx *gin.Context) error {
 	var req dto.LoadDocumentRequest
-	if err := ctx.ShouldBindUri(&req); err != nil {
+
+	id, err := uuid.Parse(ctx.Param("id"))
+	if err != nil {
 		return &ValidationError{Err: err}
 	}
+	req.DocumentID = id
+
 	if err := ctx.ShouldBindHeader(&req); err != nil {
 		return &ValidationError{Err: err}
 	}

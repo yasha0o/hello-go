@@ -24,11 +24,11 @@ func NewArchiveService(r *repository.ArchiveRepository,
 	}
 }
 
-func (s *ArchiveService) GetDocuments(
+func (s *ArchiveService) GetDocumentsPage(
 	ctx context.Context,
 	pageParams *dto.PageParams,
 ) (*dto.RequestedDocumentsPage, error) {
-	docs, total, err := s.repository.GetDocuments(ctx, pageParams)
+	docs, total, err := s.repository.GetDocumentsPage(ctx, pageParams)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (s *ArchiveService) GetDocuments(
 
 func (s *ArchiveService) GetDocument(
 	ctx context.Context,
-	id *uuid.UUID,
+	id uuid.UUID,
 ) (*dto.DocumentDto, error) {
 	doc, err := s.repository.GetDocument(ctx, id)
 	if err != nil {
@@ -60,6 +60,16 @@ func (s *ArchiveService) LoadDocument(
 	req *dto.LoadDocumentRequest,
 ) (*dto.CreatedRequest, error) {
 	request := s.mapper.MapRequest(req)
+
+	ctx, err := s.repository.CreateTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = s.repository.RollbackTx(ctx)
+	}()
+
 	id, err := s.repository.InsertRequest(ctx, request)
 	if err != nil {
 		return nil, err
@@ -69,7 +79,11 @@ func (s *ArchiveService) LoadDocument(
 	// по запросам документа в различные архивы
 
 	response := &dto.CreatedRequest{
-		ID: id,
+		ID: *id,
+	}
+
+	if err := s.repository.CommitTx(ctx); err != nil {
+		return nil, err
 	}
 
 	return response, err
