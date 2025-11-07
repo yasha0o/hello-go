@@ -16,8 +16,8 @@ type DocumentDto struct {
 }
 
 type PageParams struct {
-	Page int `form:"page"`
-	Size int `form:"size"`
+	Page int `form:"page,default=1" binding:"gte=0"`
+	Size int `form:"size,default=10" binding:"gt=0"`
 }
 
 type RequestedDocumentsPage struct {

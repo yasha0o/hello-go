@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 
+	"hello-go/internal/domain"
 	"hello-go/internal/dto"
 	"hello-go/internal/service"
 
@@ -20,10 +21,10 @@ func NewArchiveController(s *service.ArchiveService) *ArchiveController {
 	}
 }
 
-func (c *ArchiveController) Init(enginie *gin.Engine) {
-	enginie.GET("/archive/documents", ErrorWrapper(c.GetDocuments))
-	enginie.GET("/archive/documents/:id", ErrorWrapper(c.GetDocument))
-	enginie.POST("/archive/documents/:id", ErrorWrapper(c.LoadDocument))
+func (c *ArchiveController) Init(engine *gin.Engine) {
+	engine.GET("/archive/documents", ErrorWrapper(c.GetDocuments))
+	engine.GET("/archive/documents/:id", ErrorWrapper(c.GetDocument))
+	engine.POST("/archive/documents/:id", ErrorWrapper(c.LoadDocument))
 }
 
 // GetDocuments получение списка документов с пагинацией
@@ -43,7 +44,7 @@ func (c *ArchiveController) GetDocuments(ctx *gin.Context) error {
 	var req dto.PageParams
 
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		return &ValidationError{Err: err}
+		return &domain.ValidationError{Err: err}
 	}
 	archives, err := c.service.GetDocumentsPage(ctx.Request.Context(), &req)
 	if err != nil {
@@ -68,7 +69,7 @@ func (c *ArchiveController) GetDocuments(ctx *gin.Context) error {
 func (c *ArchiveController) GetDocument(ctx *gin.Context) error {
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		return &ValidationError{Err: err}
+		return &domain.ValidationError{Err: err}
 	}
 
 	archives, err := c.service.GetDocument(ctx.Request.Context(), id)
@@ -100,15 +101,15 @@ func (c *ArchiveController) LoadDocument(ctx *gin.Context) error {
 
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		return &ValidationError{Err: err}
+		return &domain.ValidationError{Err: err}
 	}
 	req.DocumentID = id
 
 	if err := ctx.ShouldBindHeader(&req); err != nil {
-		return &ValidationError{Err: err}
+		return &domain.ValidationError{Err: err}
 	}
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		return &ValidationError{Err: err}
+		return &domain.ValidationError{Err: err}
 	}
 
 	response, err := c.service.LoadDocument(ctx.Request.Context(), &req)

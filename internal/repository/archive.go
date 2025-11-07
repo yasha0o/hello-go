@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"hello-go/internal/domain"
@@ -22,39 +23,19 @@ func NewArchiveRepository(db *pgxpool.Pool) *ArchiveRepository {
 	}
 }
 
-func (r *ArchiveRepository) CreateTx(ctx context.Context) (context.Context, error) {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return context.WithValue(ctx, txKey{}, tx), nil
-}
-
-func (r *ArchiveRepository) CommitTx(ctx context.Context) error {
-	tx, ok := ctx.Value(txKey{}).(pgx.Tx)
-	if !ok {
-		return fmt.Errorf("транзакция не найдена в контексте")
-	}
-	return tx.Commit(ctx)
-}
-
-func (r *ArchiveRepository) RollbackTx(ctx context.Context) error {
-	tx, ok := ctx.Value(txKey{}).(pgx.Tx)
-	if !ok {
-		return fmt.Errorf("транзакция не найдена в контексте")
-	}
-	return tx.Rollback(ctx)
-}
-
 func (r *ArchiveRepository) InsertRequest(
 	ctx context.Context, req *domain.Request,
 ) (*uuid.UUID, error) {
+	return r.InsertRequestTx(ctx, r.db, req)
+}
+
+func (r *ArchiveRepository) InsertRequestTx(
+	ctx context.Context, querier Querier, req *domain.Request,
+) (*uuid.UUID, error) {
 	if req == nil {
-		return nil, fmt.Errorf("передан некорректный запрос")
+		return nil, fmt.Errorf("incorrect request")
 	}
 
-	querier := r.getTx(ctx)
 	query := `INSERT INTO archive.requests (document_id, region, sender) 
 	VALUES (@documentID, @region, @sender) RETURNING id`
 	args := pgx.NamedArgs{
@@ -75,22 +56,25 @@ func (r *ArchiveRepository) InsertRequest(
 func (r *ArchiveRepository) UpsertDocument(
 	ctx context.Context, req *domain.Document,
 ) error {
+	return r.UpsertDocumentTx(ctx, r.db, req)
+}
+
+func (r *ArchiveRepository) UpsertDocumentTx(
+	ctx context.Context, tx Querier, req *domain.Document,
+) error {
 	if req == nil {
-		return fmt.Errorf("передан некорректный запрос")
+		return fmt.Errorf("incorrect document")
 	}
 
-	querier := r.getTx(ctx)
 	query := `INSERT INTO archive.documents (id, data) 
-	VALUES (@id, jsonb_build_array(@data)) ON CONFLICT id DO 
-	UPDATE archive.documents 
-	SET data = data || jsonb_build_array(@data) 
-	WHERE id = @id`
+	VALUES (@id, jsonb_build_array(@data)) ON CONFLICT (id) DO 
+	UPDATE SET data = data || jsonb_build_array(@data)`
 	args := pgx.NamedArgs{
 		"id":   req.ID,
 		"data": req.Document,
 	}
 
-	_, err := querier.Exec(ctx, query, args)
+	_, err := tx.Exec(ctx, query, args)
 	if err != nil {
 		return err
 	}
@@ -98,10 +82,17 @@ func (r *ArchiveRepository) UpsertDocument(
 	return nil
 }
 
-func (r *ArchiveRepository) GetDocument(ctx context.Context, id uuid.UUID) (
+func (r *ArchiveRepository) GetDocument(
+	ctx context.Context, id uuid.UUID) (
 	*domain.Document, error,
 ) {
-	querier := r.getTx(ctx)
+	return r.GetDocumentTx(ctx, r.db, id)
+}
+
+func (r *ArchiveRepository) GetDocumentTx(
+	ctx context.Context, tx Querier, id uuid.UUID) (
+	*domain.Document, error,
+) {
 	var doc domain.Document
 	query := `SELECT id, data, created_at, updated_at 
 	FROM archive.documents
@@ -110,13 +101,18 @@ func (r *ArchiveRepository) GetDocument(ctx context.Context, id uuid.UUID) (
 		"id": id,
 	}
 
-	err := querier.QueryRow(ctx, query, args).Scan(
+	err := tx.QueryRow(ctx, query, args).Scan(
 		&doc.ID,
 		&doc.Document,
 		&doc.CreatedAt,
 		&doc.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &domain.NotFoundError{
+				Err: err,
+			}
+		}
 		return nil, err
 	}
 
@@ -127,30 +123,32 @@ func (r *ArchiveRepository) GetDocumentsPage(
 	ctx context.Context, pagination *dto.PageParams) (
 	[]*domain.Document, int64, error,
 ) {
+	return r.GetDocumentsPageTx(ctx, r.db, pagination)
+}
+
+func (r *ArchiveRepository) GetDocumentsPageTx(
+	ctx context.Context, tx Querier, pagination *dto.PageParams) (
+	[]*domain.Document, int64, error,
+) {
 	if pagination == nil {
-		return nil, 0, fmt.Errorf("переданы некорректные параметры пагинации")
+		return nil, 0, fmt.Errorf("incorrect pagination")
 	}
 
-	querier := r.getTx(ctx)
-	pageQuery := `SELECT id, data, created_at, updated_at 
+	pageQuery := `SELECT id, data, created_at, updated_at, 
+	COUNT(*) OVER() as total 
 	FROM archive.documents ORDER BY id OFFSET @offset LIMIT @size`
 	args := pgx.NamedArgs{
-		"offset": (pagination.Page * pagination.Size) + 1,
+		"offset": (pagination.Page * pagination.Size),
 		"size":   pagination.Size,
 	}
 
-	countQuery := `SELECT count(*) FROM archive.documents`
-	var total int64
-	err := querier.QueryRow(ctx, countQuery).Scan(&total)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	rows, err := querier.Query(ctx, pageQuery, args)
+	rows, err := tx.Query(ctx, pageQuery, args)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
+
+	var total int64
 
 	docs := make([]*domain.Document, 0, pagination.Size)
 	for rows.Next() {
@@ -159,20 +157,25 @@ func (r *ArchiveRepository) GetDocumentsPage(
 			&doc.ID,
 			&doc.Document,
 			&doc.CreatedAt,
-			&doc.UpdatedAt)
+			&doc.UpdatedAt,
+			&total,
+		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("ошибка считывания строки: %w", err)
+			return nil, 0, fmt.Errorf("row scan error: %w", err)
 		}
 		docs = append(docs, doc)
+	}
+
+	if rows.Err() != nil {
+		return nil, 0, rows.Err()
 	}
 
 	return docs, total, nil
 }
 
-func (r *ArchiveRepository) getTx(ctx context.Context) Querier {
-	tx, ok := ctx.Value(txKey{}).(pgx.Tx)
-	if ok {
-		return tx
-	}
-	return r.db
+func (r *ArchiveRepository) WithTx(
+	ctx context.Context,
+	fn func(Querier) error,
+) error {
+	return WithTx(ctx, r.db, fn)
 }

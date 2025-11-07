@@ -40,12 +40,12 @@ func main() {
 
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		log.Fatalf("unexpeced error while run db pool")
-		return
+		log.Fatalf("unexpected error while run db pool")
 	}
+	defer pool.Close()
+
 	if err = pool.Ping(ctx); err != nil {
-		log.Fatalf("Unable to ping database: %v", err)
-		return
+		log.Fatalf("unable to ping database: %v", err)
 	}
 
 	archiveMapper := mapper.NewArchiveMapper()
@@ -60,6 +60,6 @@ func main() {
 
 	err = router.Run(":" + port)
 	if err != nil {
-		log.Fatalf("unexpeced error while run controllers")
+		log.Fatalf("unexpected error while run controllers")
 	}
 }

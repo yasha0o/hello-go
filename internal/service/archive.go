@@ -28,12 +28,14 @@ func (s *ArchiveService) GetDocumentsPage(
 	ctx context.Context,
 	pageParams *dto.PageParams,
 ) (*dto.RequestedDocumentsPage, error) {
+	var response *dto.RequestedDocumentsPage
+
 	docs, total, err := s.repository.GetDocumentsPage(ctx, pageParams)
 	if err != nil {
 		return nil, err
 	}
 
-	response := &dto.RequestedDocumentsPage{
+	response = &dto.RequestedDocumentsPage{
 		Data:  s.mapper.MapSlice(docs),
 		Total: total,
 		Page:  pageParams.Page,
@@ -61,30 +63,27 @@ func (s *ArchiveService) LoadDocument(
 ) (*dto.CreatedRequest, error) {
 	request := s.mapper.MapRequest(req)
 
-	ctx, err := s.repository.CreateTx(ctx)
+	var response *dto.CreatedRequest
+
+	action := func(tx repository.Querier) error {
+		id, err := s.repository.InsertRequestTx(ctx, tx, request)
+		if err != nil {
+			return err
+		}
+
+		// TODO здесь будет реализован запуск долгой операции
+		// по запросам документа в различные архивы
+
+		response = &dto.CreatedRequest{
+			ID: *id,
+		}
+		return nil
+	}
+
+	err := s.repository.WithTx(ctx, action)
 	if err != nil {
 		return nil, err
 	}
 
-	defer func() {
-		_ = s.repository.RollbackTx(ctx)
-	}()
-
-	id, err := s.repository.InsertRequest(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO здесь будет реализован запуск долгой операции
-	// по запросам документа в различные архивы
-
-	response := &dto.CreatedRequest{
-		ID: *id,
-	}
-
-	if err := s.repository.CommitTx(ctx); err != nil {
-		return nil, err
-	}
-
-	return response, err
+	return response, nil
 }
