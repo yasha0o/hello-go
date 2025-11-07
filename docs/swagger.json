@@ -62,7 +62,7 @@
         },
         "/archive/documents/{id}": {
             "get": {
-                "description": "Возвращает документ по указанному ID с учетом параметров запроса",
+                "description": "Возвращает документ по указанному ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -81,19 +81,55 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с документом",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DocumentDto"
+                        }
                     },
+                    "404": {
+                        "description": "Документ не найден",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ApiError"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ApiError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Загружает документ с указанным ID из архивов",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "archive"
+                ],
+                "summary": "Загрузить документ по ID",
+                "parameters": [
                     {
                         "type": "string",
-                        "description": "Хост запроса",
-                        "name": "Host",
-                        "in": "header",
+                        "format": "uuid",
+                        "description": "ID документа",
+                        "name": "id",
+                        "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Отправитель запроса",
                         "name": "sender",
-                        "in": "query",
+                        "in": "header",
                         "required": true
                     },
                     {
@@ -105,19 +141,13 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Успешный ответ с документом",
+                        "description": "Успешный ответ c идентификатором созданного запроса",
                         "schema": {
-                            "$ref": "#/definitions/dto.DocumentDto"
+                            "$ref": "#/definitions/dto.CreatedRequest"
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации",
-                        "schema": {
-                            "$ref": "#/definitions/controller.ApiError"
-                        }
-                    },
-                    "404": {
-                        "description": "Документ не найден",
                         "schema": {
                             "$ref": "#/definitions/controller.ApiError"
                         }
@@ -140,6 +170,14 @@
                     "type": "integer"
                 },
                 "description": {}
+            }
+        },
+        "dto.CreatedRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
             }
         },
         "dto.DocumentDto": {

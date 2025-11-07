@@ -4,24 +4,73 @@ import (
 	"context"
 
 	"hello-go/internal/dto"
+	"hello-go/internal/mapper"
+	"hello-go/internal/repository"
+
+	"github.com/google/uuid"
 )
 
-type ArchiveService struct{}
-
-func NewArchiveService() *ArchiveService {
-	return &ArchiveService{}
+type ArchiveService struct {
+	repository *repository.ArchiveRepository
+	mapper     *mapper.ArchiveMapper
 }
 
-func (service *ArchiveService) GetDocuments(
+func NewArchiveService(r *repository.ArchiveRepository,
+	m *mapper.ArchiveMapper,
+) *ArchiveService {
+	return &ArchiveService{
+		repository: r,
+		mapper:     m,
+	}
+}
+
+func (s *ArchiveService) GetDocuments(
 	ctx context.Context,
 	pageParams *dto.PageParams,
-) (dto.RequestedDocumentsPage, error) {
-	return dto.RequestedDocumentsPage{}, nil
+) (*dto.RequestedDocumentsPage, error) {
+	docs, total, err := s.repository.GetDocuments(ctx, pageParams)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &dto.RequestedDocumentsPage{
+		Data:  s.mapper.MapSlice(docs),
+		Total: total,
+		Page:  pageParams.Page,
+		Size:  pageParams.Size,
+	}
+
+	return response, nil
 }
 
-func (service *ArchiveService) GetDocument(
+func (s *ArchiveService) GetDocument(
 	ctx context.Context,
-	req *dto.DocumentRequest,
-) (dto.DocumentDto, error) {
-	return dto.DocumentDto{}, nil
+	id *uuid.UUID,
+) (*dto.DocumentDto, error) {
+	doc, err := s.repository.GetDocument(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.mapper.MapDocument(doc), nil
+}
+
+func (s *ArchiveService) LoadDocument(
+	ctx context.Context,
+	req *dto.LoadDocumentRequest,
+) (*dto.CreatedRequest, error) {
+	request := s.mapper.MapRequest(req)
+	id, err := s.repository.InsertRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO здесь будет реализован запуск долгой операции
+	// по запросам документа в различные архивы
+
+	response := &dto.CreatedRequest{
+		ID: id,
+	}
+
+	return response, err
 }

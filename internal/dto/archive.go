@@ -21,15 +21,18 @@ type PageParams struct {
 }
 
 type RequestedDocumentsPage struct {
-	Data  []DocumentDto `json:"data"`
-	Total int           `json:"total"`
-	Page  int           `json:"page"`
-	Size  int           `json:"size"`
+	Data  []*DocumentDto `json:"data"`
+	Total int64          `json:"total"`
+	Page  int            `json:"page"`
+	Size  int            `json:"size"`
 }
 
-type DocumentRequest struct {
-	DocumentID string        `uri:"id" binding:"required"`
-	Host       string        `header:"Host"`
+type CreatedRequest struct {
+	ID *uuid.UUID `json:"id"`
+}
+
+type LoadDocumentRequest struct {
+	DocumentID uuid.UUID     `uri:"id" binding:"required"`
 	Sender     string        `form:"sender" binding:"required"`
 	Region     domain.Region `form:"region"`
 }

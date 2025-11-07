@@ -38,7 +38,6 @@ func handleError(c *gin.Context, err error) {
 			Code:        http.StatusBadRequest,
 			Description: e.Error(),
 		}
-
 	default:
 		error = ApiError{
 			Code:        http.StatusInternalServerError,

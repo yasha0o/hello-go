@@ -6,6 +6,11 @@ definitions:
         type: integer
       description: {}
     type: object
+  dto.CreatedRequest:
+    properties:
+      id:
+        type: string
+    type: object
   dto.DocumentDto:
     properties:
       created_at:
@@ -74,7 +79,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Возвращает документ по указанному ID с учетом параметров запроса
+      description: Возвращает документ по указанному ID
       parameters:
       - description: ID документа
         format: uuid
@@ -82,13 +87,37 @@ paths:
         name: id
         required: true
         type: string
-      - description: Хост запроса
-        in: header
-        name: Host
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с документом
+          schema:
+            $ref: '#/definitions/dto.DocumentDto'
+        "404":
+          description: Документ не найден
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/controller.ApiError'
+      summary: Получить документ по ID
+      tags:
+      - archive
+    post:
+      consumes:
+      - application/json
+      description: Загружает документ с указанным ID из архивов
+      parameters:
+      - description: ID документа
+        format: uuid
+        in: path
+        name: id
         required: true
         type: string
       - description: Отправитель запроса
-        in: query
+        in: header
         name: sender
         required: true
         type: string
@@ -100,22 +129,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Успешный ответ с документом
+          description: Успешный ответ c идентификатором созданного запроса
           schema:
-            $ref: '#/definitions/dto.DocumentDto'
+            $ref: '#/definitions/dto.CreatedRequest'
         "400":
           description: Ошибка валидации
-          schema:
-            $ref: '#/definitions/controller.ApiError'
-        "404":
-          description: Документ не найден
           schema:
             $ref: '#/definitions/controller.ApiError'
         "500":
           description: Внутренняя ошибка сервера
           schema:
             $ref: '#/definitions/controller.ApiError'
-      summary: Получить документ по ID
+      summary: Загрузить документ по ID
       tags:
       - archive
 swagger: "2.0"
